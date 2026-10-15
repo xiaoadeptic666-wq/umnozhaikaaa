@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Умножайка: Космические Приключения</title>
+<!-- Подключаем веселые шрифты -->
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+--bg-gradient: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
+--card-bg: rgba(255, 255, 255, 0.95);
+--primary: #FF6B6B;
+--accent: #4ECDC4;
+--text: #2C3E50;
+--correct: #4ECC71;
+--wrong: #FF6347;
+--progress-bg: #f0f0f0;
+--coins-color: #FFD700;
+}
+
+body {
+margin: 0;
+padding: 0;
+font-family: 'Rubik', sans-serif;
+background: var(--bg-gradient);
+display: flex;
+justify-content: center;
+align-items: center;
+min-height: 100vh;
+overflow: hidden;
+position: relative;
+color: var(--text);
+}
+
+/* --- Параллакс фон --- */
+.parallax-layer {
+position: absolute;
+top: 0; left: 0; width: 100%; height: 100%;
+pointer-events: none;
+z-index: 0;
+overflow: hidden;
+}
+
+.stars {
+background-image: radial-gradient(white, rgba(255,255,255,0) 1px), #000;
+background-size: 400px 400px;
+animation: twinkle 5s infinite linear;
+z-index: 1;
+}
+
+.planets {
+width: 100%; height: 100%;
+background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Ccircle cx='50' cy='50' r='15' fill='%23FFA500'/%3E%3Ccircle cx='150' cy='150' r='20' fill='%233498DB'/%3E%3C/svg%3E");
+background-repeat: no-repeat;
+background-position: center;
+opacity: 0.3;
+z-index: 2;
+}
+
+@keyframes twinkle {
+0% { opacity: 0.5; }
+50% { opacity: 1; }
+100% { opacity: 0.5; }
+}
+</style>
+<style>
+.screen {
+display: none;
+width: 100%;
+max-width: 500px;
+text-align: center;
+z-index: 10;
+backdrop-filter: blur(10px);
+}
+.screen.active { display: block; animation: fadeIn 0.4s ease-out; }
+
+h1 {
+font-family: 'Bangers', cursive;
+color: white;
+text-shadow: 3px 3px 0 #000, 6px 6px 0 #333;
+margin-bottom: 1rem;
+font-size: 3rem;
+}
+h2 { margin: 0 0 1rem 0; color: var(--text); font-weight: 700; }
+
+.btn-main {
+padding: 15px 30px;
+font-size: 1.2rem;
+background: white;
+color: var(--primary);
+border: none;
+border-radius: 50px;
+cursor: pointer;
+transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+margin: 10px;
+font-weight: bold;
+text-transform: uppercase;
+}
+.btn-main:hover {
+transform: scale(1.05) rotate(-2deg);
+background: var(--accent);
+color: white;
+box-shadow: 0 8px 20px rgba(78, 205, 196, 0.6);
+}
+.btn-main:active { transform: scale(0.98); }
+
+/* Декоративные элементы */
+.badge {
+display: inline-block;
+padding: 5px 12px;
+background: rgba(255,255,255,0.8);
+border-radius: 20px;
+margin-top: 10px;
+font-weight: bold;
+color: var(--primary);
+box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+</style>
+<style>
+/* --- Сетка уровней --- */
+.levels-grid {
+display: grid;
+grid-template-columns: repeat(5, 1fr);
+gap: 12px;
+margin: 20px auto;
+max-width: 450px;
+}
+.level-btn {
+width: 60px;
+height: 60px;
+border-radius: 15px;
+border: 3px solid white;
+font-weight: bold;
+font-size: 1.3rem;
+cursor: pointer;
+transition: all 0.2s;
+position: relative;
+overflow: hidden;
+background: rgba(255,255,255,0.6);
+backdrop-filter: blur(5px);
+}
+.level-btn::before {
+content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(255,255,255,0.2); transform: scaleX(0); transform-origin: left;
+transition: transform 0.3s;
+}
+.level-btn:hover::before { transform: scaleX(1); }
+.level-btn.completed {
+background: var(--correct);
+color: white;
+border-color: var(--correct);
+cursor: default;
+filter: grayscale(1) contrast(1.5);
+}
+.level-btn.normal { background: white; color: var(--text); }
+
+/* Полоска прогресса */
+.global-progress-container {
+width: 90%;
+height: 12px;
+background: var(--progress-bg);
+border-radius: 6px;
+margin-bottom: 20px;
+position: relative;
+overflow: hidden;
+box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+}
+.global-progress-fill {
+height: 100%;
+background: linear-gradient(90deg, var(--primary), var(--accent));
+width: 0%;
+border-radius: 6px;
+box-shadow: 0 0 15px var(--primary);
+}
+
+/* --- Игровое поле --- */
+.game-container {
+background: var(--card-bg);
+padding: 2.5rem;
+border-radius: 30px;
+box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+position: relative;
+z-index: 10;
+border: 2px solid rgba(255,255,255,0.5);
+/* Эффект матового стекла */
+backdrop-filter: blur(20px);
+-webkit-backdrop-filter: blur(20px);
+}
+.question-box {
+font-size: 3.5rem;
+font-weight: 800;
+color: var(--text);
+margin: 1.5rem 0;
+min-height: 80px;
+text-align: center;
+line-height: 1.2;
+text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+<style>
+input[type="number"] {
+width: 100px;
+height: 70px;
+font-size: 2rem;
+text-align: center;
+border: 4px solid var(--primary);
+border-radius: 15px;
+outline: none;
+transition: border-color 0.3s, transform 0.2s, background 0.3s;
+background: rgba(255,255,255,0.7);
+font-weight: bold;
+color: var(--text);
+}
+input:focus {
+border-color: var(--accent);
+transform: scale(1.1);
+background: white;
+}
+input.wrong-answer {
+border-color: var(--wrong);
+background-color: rgba(255, 99, 71, 0.15);
+animation: shake 0.5s;
+}
+input.correct-answer {
+border-color: var(--correct);
+background-color: rgba(78, 205, 113, 0.15);
+}
+
+.progress-bar-container {
+width: 100%;
+height: 15px;
+background: #ddd;
+border-radius: 8px;
+margin: 1.5rem 0;
+overflow: hidden;
+position: relative;
+}
+.progress-fill {
+height: 100%;
+background: linear-gradient(90deg, var(--primary), var(--accent));
+width: 0%;
+transition: width 0.3s ease-out;
+box-shadow: 0 0 10px var(--primary);
+}
+
+/* Модальные окна */
+.modal-overlay {
+position: fixed;
+top: 0; left: 0; width: 100%; height: 100%;
+background: rgba(0,0,0,0.75);
+display: none;
+justify-content: center;
+align-items: center;
+z-index: 100;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+background: white;
+padding: 2.5rem;
+border-radius: 25px;
+text-align: center;
+transform: scale(0.8);
+opacity: 0;
+animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+border: 5px solid white;
+}
+@keyframes popIn { to { transform: scale(1); opacity: 1; } }
+
+/* Эффекты */
+@keyframes shake {
+10%, 90% { transform: translate3d(-3px, 0, 0); }
+20%, 80% { transform: translate3d(5px, 0, 0); }
+30%, 70% { transform: translate3d(-7px, 0, 0); }
+40%, 60% { transform: translate3d(7px, 0, 0); }
+50% { transform: translate3d(0, 0, 0); }
+}
+
+.confetti {
+position: absolute;
+top: -20px;
+width: 12px;
+height: 12px;
+background-color: gold;
+animation: fall linear forwards;
+pointer-events: none;
+z-index: 20;
+}
+@keyframes fall { to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+.notification {
+position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px);
+background: var(--correct); color: white; padding: 12px 24px; border-radius: 30px;
+opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 30;
+font-weight: bold;
+box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Фоновые слои -->
+<div class="parallax-layer stars"></div>
+<div class="parallax-layer planets"></div>
+
+<!-- Декоративный слой со зверями (SVG) -->
+<div class="skin-overlay cat-bg" id="skin-layer" style="z-index: 5;"></div>
+
+<!-- Уведомление -->
+<div id="notification" class="notification">Верно!</div>
+<!-- ЭКРАН 1: ГЛАВНОЕ МЕНЮ -->
+<div id="menu-screen" class="screen active">
+<div class="badge" style="margin-top: 20px;">🚀 Готов к приключениям?</div>
+<h1>Умножайка</h1>
+<button class="btn-main" onclick="showScreen('levels-screen')">🗺️ Играть</button>
+<button class="btn-main" style="background: #FF4757; color: white;" onclick="exitGame()">🚪 Выход</button>
+<button class="btn-main" style="margin-top: 20px;" onclick="showScreen('shop-screen')">🛍️ Магазин</button>
+</div>
+
+<!-- ЭКРАН 2: ВЫБОР УРОВНЕЙ -->
+<div id="levels-screen" class="screen">
+<h1>Карта галактики</h1>
+
+<!-- Кнопка "В меню" теперь СРАЗУ ПОД ЗАГОЛОВКОМ -->
+<button class="btn-main" style="margin-top: 10px; padding: 12px 24px; font-size: 1rem;" onclick="showScreen('menu-screen')">
+🗺️ В меню
+</button>
+
+<div style="width: 90%; margin: 0 auto 15px;">
+<p style="margin:0 0 5px; color: #7f8c8d; font-size: 1rem;">Пройдено: <b id="completed-count" style="color: var(--correct);">0</b> из 50</p>
+<div class="global-progress-container">
+<div class="global-progress-fill" id="global-progress"></div>
+</div>
+</div>
+
+<!-- Сетка уровней -->
+<div class="levels-grid" id="levels-grid"></div>
+</div>
+<!-- ЭКРАН 3: ИГРА -->
+<div id="game-screen" class="screen">
+<h2 id="current-level-title" style="font-family: 'Bangers', cursive; color: var(--primary);">Уровень 1</h2>
+<p id="level-goal" style="color: #7f8c8d;">Цель: решить 5 примеров</p>
+
+<div class="game-container">
+<div class="question-box" id="question">2 × 3 = ?</div>
+
+<input type="number" id="answer-input" placeholder="?" autocomplete="off">
+
+<button class="btn-main" onclick="checkAnswer()">✅ Проверить</button>
+
+<div style="margin-top: 15px; font-size: 1.1rem; display: flex; justify-content: space-around;">
+<span>Счёт: <b id="score" style="color: var(--accent);">0</b></span>
+<span>Ошибки: <b id="mistakes" style="color: var(--wrong);">0</b></span>
+</div>
+
+<div class="progress-bar-container">
+<div class="progress-fill" id="progress"></div>
+</div>
+</div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО ПОБЕДЫ -->
+<div id="win-modal" class="modal-overlay">
+<div class="modal-content">
+<h2 style="color: var(--correct);">🎉 Уровень пройден!</h2>
+<p>Ты заработал 20 монет!</p>
+<button class="btn-main" onclick="nextLevelFromModal()">➡️ Следующий уровень</button>
+<button class="btn-main" style="margin-top: 10px;" onclick="closeWinModal()">🏠 На карту</button>
+</div>
+</div>
+
+
+<!-- МОДАЛЬНОЕ ОКНО ВЫХОДА -->
+<div id="exit-modal" class="modal-overlay">
+<div class="modal-content">
+<h2>Выйти из игры?</h2>
+<p style="margin: 1rem 0; color: #7f8c8d;">Прогресс сохранится, но можно сбросить.</p>
+<button class="btn-main" style="background: #FF6B6B; color: white;" onclick="confirmExit()">Да, выйти</button>
+<button class="btn-main" style="margin-top: 10px;" onclick="closeExitModal()">Отмена</button>
+</div>
+</div>
+
+<!-- ЭКРАН 4: МАГАЗИН -->
+<div id="shop-screen" class="screen">
+<h1>Магазин скинов 🛍️</h1>
+<p style="color: #7f8c8d;">У тебя монет: <b id="shop-coins" style="color: var(--coins-color);">0</b></p>
+
+<div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin: 30px 0;">
+<!-- Скин кота (Обновленный) -->
+<div style="text-align: center;">
+<div style="width: 80px; height: 80px; background: #FFFACD; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4);">🐱✨</div>
+<p>Космический Кот</p>
+<button class="btn-main" style="padding: 8px 16px; font-size: 0.9rem; background: var(--primary); color: white;" onclick="buySkin('cat')">Купить (200)</button>
+</div>
+
+<!-- Скин капибары -->
+<div style="text-align: center;">
+<div style="width: 80px; height: 80px; background: #E6FFE6; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(169, 196, 106, 0.4);">🦫🚀</div>
+<p>Капибара-Астронавт</p>
+<button class="btn-main" style="padding: 8px 16px; font-size: 0.9rem; background: var(--primary); color: white;" onclick="buySkin('capybara')">Купить (200)</button>
+</div>
+
+<!-- Скин панды -->
+<div style="text-align: center;">
+<div style="width: 80px; height: 80px; background: #34495E; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 10px; color: #fff; box-shadow: 0 4px 10px rgba(44, 62, 80, 0.8);">🐼🌙</div>
+<p>Панда-Космонавт</p>
+<button class="btn-main" style="padding: 8px 16px; font-size: 0.9rem; background: var(--primary); color: white;" onclick="buySkin('panda')">Купить (200)</button>
+</div>
+</div>
+<button class="btn-main" onclick="showScreen('menu-screen')">🗺️ В меню</button>
+</div>
+<script>
+// --- ПЕРЕМЕННЫЕ И НАСТРОЙКИ ---
+const MAX_LEVELS = 50;
+let completedLevels = [];
+let coins = 0;
+let activeSkin = 'default';
+let lastQuestions = [];
+const HISTORY_SIZE = 3;
+const SAVE_KEY = 'multiply-game-save-v1';
+
+// --- СОХРАНЕНИЕ И ЗАГРУЗКА ---
+function saveProgress() {
+const data = { completedLevels, coins, activeSkin };
+localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+}
+
+function loadProgress() {
+const saved = localStorage.getItem(SAVE_KEY);
+if (saved) {
+try {
+const data = JSON.parse(saved);
+completedLevels = data.completedLevels || [];
+coins = data.coins || 0;
+activeSkin = data.activeSkin || 'default';
+} catch (e) {
+console.warn('Не удалось загрузить сохранение:', e);
+}
+}
+applySkin();
+renderLevels();
+updateShopDisplay();
+}
+
+// --- СКИНЫ И МАГАЗИН ---
+function updateShopDisplay() {
+const shopCoinsEl = document.getElementById('shop-coins');
+if (shopCoinsEl) shopCoinsEl.innerText = coins;
+}
+
+function buySkin(skinName) {
+const cost = 200;
+if (coins < cost) {
+showNotification('Не хватает монет!');
+return;
+}
+coins -= cost;
+activeSkin = skinName;
+saveProgress();
+applySkin();
+updateShopDisplay();
+showNotification(`Скин "${skinName}" активирован!`);
+}
+
+function applySkin() {
+const layer = document.getElementById('skin-layer');
+if (!layer) return;
+layer.className = 'skin-overlay';
+if (activeSkin !== 'default') {
+layer.classList.add(`${activeSkin}-bg`);
+}
+
+// Смена палитры под скин
+const root = document.documentElement;
+if (activeSkin === 'cat') {
+root.style.setProperty('--primary', '#FF6B6B');
+root.style.setProperty('--accent', '#F7DC6F');
+} else if (activeSkin === 'capybara') {
+root.style.setProperty('--primary', '#A9C46A');
+root.style.setProperty('--accent', '#E6B333');
+} else if (activeSkin === 'panda') {
+root.style.setProperty('--primary', '#2C3E50');
+root.style.setProperty('--accent', '#95A5A6');
+} else {
+root.style.removeProperty('--primary');
+root.style.removeProperty('--accent');
+}
+}
+
+// --- ЭКРАНЫ И ПЕРЕКЛЮЧЕНИЕ ---
+function showScreen(id) {
+document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+const target = document.getElementById(id);
+if (target) {
+target.classList.add('active');
+if (id === 'shop-screen') updateShopDisplay();
+}
+}
+
+function exitGame() {
+document.getElementById('exit-modal').classList.add('active');
+}
+
+function closeExitModal() {
+document.getElementById('exit-modal').classList.remove('active');
+}
+
+function confirmExit() {
+// Здесь мы не делаем реальный выход из браузера, просто сбрасываем прогресс и возвращаем в меню
+// Если нужно просто закрыть вкладку — это нельзя сделать из JS по безопасности.
+localStorage.removeItem(SAVE_KEY); // опционально: сброс прогресса
+location.reload(); // перезагрузка страницы
+}
+
+// --- ИГРА ---
+let currentLevelId = 1;
+let score = 0;
+let mistakes = 0;
+let a, b, correctAnswer;
+let targetReached = false;
+
+function startGame(levelId) {
+currentLevelId = levelId;
+score = 0;
+mistakes = 0;
+targetReached = false;
+lastQuestions = [];
+
+const isEarlyLevel = currentLevelId >= 1 && currentLevelId <= 10;
+const target = isEarlyLevel ? 10 : 5;
+
+document.getElementById('current-level-title').innerText = `Уровень ${levelId}`;
+document.getElementById('level-goal').innerText = `Цель: решить ${target} примеров`;
+document.getElementById('score').innerText = '0';
+document.getElementById('mistakes').innerText = '0';
+document.getElementById('progress').style.width = '0%';
+
+nextQuestion();
+showScreen('game-screen');
+initAudio();
+}
+
+function nextQuestion() {
+const q = generateQuestion(currentLevelId);
+a = q.a;
+b = q.b;
+correctAnswer = q.answer;
+document.getElementById('question').innerText = `${a} × ${b} = ?`;
+
+const input = document.getElementById('answer-input');
+input.value = '';
+input.classList.remove('wrong-answer', 'correct-answer');
+input.focus();
+}
+
+function checkAnswer() {
+if (targetReached) return;
+const input = document.getElementById('answer-input');
+const userAnswer = parseInt(input.value);
+
+if (!userAnswer && userAnswer !== 0) return;
+
+if (userAnswer === correctAnswer) {
+score++;
+document.getElementById('score').innerText = score;
+playSound('correct');
+input.classList.add('correct-answer');
+showNotification('Верно!');
+
+const isEarlyLevel = currentLevelId >= 1 && currentLevelId <= 10;
+const target = isEarlyLevel ? 10 : 5;
+const percent = Math.min((score / target) * 100, 100);
+document.getElementById('progress').style.width = percent + '%';
+
+if (score >= target) {
+targetReached = true;
+if (!completedLevels.includes(currentLevelId)) {
+completedLevels.push(currentLevelId);
+coins += 20;
+saveProgress();
+renderLevels();
+playSound('level_up');
+document.getElementById('win-modal').classList.add('active');
+}
+} else {
+setTimeout(nextQuestion, 800);
+}
+} else {
+mistakes++;
+document.getElementById('mistakes').innerText = mistakes;
+playSound('wrong');
+input.classList.add('wrong-answer');
+showNotification('Ошибка! Попробуй ещё раз');
+setTimeout(() => {
+input.classList.remove('wrong-answer');
+input.value = '';
+input.focus();
+}, 800);
+}
+}
+
+function nextLevelFromModal() {
+closeWinModal();
+const next = currentLevelId + 1;
+if (next <= MAX_LEVELS) {
+startGame(next);
+} else {
+showScreen('levels-screen');
+renderLevels();
+showNotification('Все уровни пройдены! 🎉');
+}
+}
+
+function closeWinModal() {
+document.getElementById('win-modal').classList.remove('active');
+showScreen('levels-screen');
+renderLevels();
+}
+
+// --- ГЕНЕРАЦИЯ ВОПРОСОВ ---
+function getMultipliersForLevel(level) {
+if (level >= 1 && level <= 10) return [level + 1];
+if (level >= 11 && level <= 20) return [6, 7, 8, 9, 10];
+if (level >= 21 && level <= 30) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+if (level >= 31 && level <= 40) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+}
+
+function generateQuestion(level) {
+const multipliers = getMultipliersForLevel(level);
+const m1 = multipliers[Math.floor(Math.random() * multipliers.length)];
+let m2Max = 10;
+if (level > 10) m2Max = 12;
+
+let m2;
+let attempts = 0;
+const maxAttempts = 20;
+
+do {
+m2 = Math.floor(Math.random() * m2Max) + 1;
+attempts++;
+} while (lastQuestions.some(q => q.a === m1 && q.b === m2) && attempts < maxAttempts);
+
+const answer = m1 * m2;
+lastQuestions.push({ a: m1, b: m2 });
+if (lastQuestions.length > HISTORY_SIZE) lastQuestions.shift();
+
+return { a: m1, b: m2, answer };
+}
+
+// --- АУДИО ---
+let audioCtx;
+function initAudio() {
+if (!audioCtx) {
+audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+}
+
+function playSound(type) {
+if (!audioCtx) return;
+const now = audioCtx.currentTime;
+const osc = audioCtx.createOscillator();
+const gainNode = audioCtx.createGain();
+osc.connect(gainNode);
+gainNode.connect(audioCtx.destination);
+
+if (type === 'correct') {
+osc.type = 'sine';
+osc.frequency.setValueAtTime(600, now);
+osc.frequency.setValueAtTime(800, now + 0.1);
+gainNode.gain.setValueAtTime(0.08, now);
+gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+osc.start(now);
+osc.stop(now + 0.3);
+} else if (type === 'wrong') {
+osc.type = 'square';
+osc.frequency.setValueAtTime(200, now);
+osc.frequency.setValueAtTime(100, now + 0.1);
+gainNode.gain.setValueAtTime(0.08, now);
+gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+osc.start(now);
+osc.stop(now + 0.2);
+} else if (type === 'level_up') {
+[440, 523, 659].forEach((freq, i) => {
+const o2 = audioCtx.createOscillator();
+const g2 = audioCtx.createGain();
+o2.type = 'triangle';
+o2.frequency.setValueAtTime(freq, now);
+g2.gain.setValueAtTime(0.08, now);
+g2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+o2.connect(g2);
+g2.connect(audioCtx.destination);
+o2.start(now);
+o2.stop(now + 0.5);
+});
+}
+}
+
+// --- УТИЛИТЫ ---
+function renderLevels() {
+const grid = document.getElementById('levels-grid');
+if (!grid) return;
+grid.innerHTML = '';
+for (let i = 1; i <= MAX_LEVELS; i++) {
+const btn = document.createElement('button');
+btn.className = 'level-btn';
+btn.innerText = i;
+
+if (completedLevels.includes(i)) {
+btn.classList.add('completed');
+} else {
+btn.classList.add('normal');
+}
+
+btn.onclick = () => startGame(i);
+grid.appendChild(btn);
+}
+
+const completedCount = completedLevels.length;
+const countEl = document.getElementById('completed-count');
+if (countEl) countEl.innerText = completedCount;
+
+const percent = (completedCount / MAX_LEVELS) * 100;
+const progressEl = document.getElementById('global-progress');
+if (progressEl) progressEl.style.width = percent + '%';
+}
+
+function showNotification(text) {
+const el = document.getElementById('notification');
+if (!el) return;
+el.innerText = text;
+el.classList.add('show');
+setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// --- ИНИЦИАЛИЗАЦИЯ ---
+document.addEventListener('DOMContentLoaded', () => {
+loadProgress();
+});
+</script>
+</body>
+</html>
